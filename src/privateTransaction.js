@@ -66,6 +66,7 @@ const N_DIV_2 = new BN(
  * @param {Buffer} data.privacyGroupId The enclave id representing the group of receivers
  * @param {Buffer} data.restriction The transaction type - "restricted" or "unrestricted"
  * @param {Number} data.chainId EIP 155 chainId - mainnet: 1, ropsten:
+ * @param {Buffer} data.otWith Either 0 or 1
  * */
 
 class PrivateTransaction {
@@ -149,6 +150,10 @@ class PrivateTransaction {
       {
         name: "restriction",
         default: Buffer.from([]),
+      },
+      {
+        name: "otWith",
+        default: Buffer.from([0x00]),
       },
     ];
 
@@ -240,7 +245,8 @@ class PrivateTransaction {
     } else {
       arr.splice(11, 1);
     }
-
+    console.log("[ITEMS]");
+    console.log(items);
     // create hash
     return ethUtil.rlphash(arr);
   }

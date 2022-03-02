@@ -350,6 +350,7 @@ function Priv(web3) {
       tx.privacyGroupId = options.privacyGroupId;
     }
     tx.restriction = options.restriction || "restricted";
+    tx.otWith = options.otWith;
 
     tx.sign(privateKeyBuffer);
 
