@@ -307,6 +307,11 @@ function Priv(web3) {
     return waitForTransactionReceipt(txHash);
   };
 
+  function extractPrivateArgs(tx) {
+
+  }
+
+  // TODO: move args to privateArgs and perform extSignature
   const genericSendRawTransaction = async (options, method) => {
     if (web3.isQuorum) {
       const transactionPayload = await getTransactionPayload(options);
@@ -352,7 +357,11 @@ function Priv(web3) {
     tx.restriction = options.restriction || "restricted";
     tx.otWith = options.otWith;
 
+    tx.extractPrivateArgs();
+
     tx.sign(privateKeyBuffer);
+
+    tx.extSign(privateKeyBuffer);
 
     const signedRlpEncoded = tx.serialize().toString("hex");
 

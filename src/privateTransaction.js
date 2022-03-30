@@ -13,6 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+const { range } = require("lodash");
 const ethUtil = require("./util/custom-ethjs-util");
 
 const { BN } = ethUtil;
@@ -155,6 +156,29 @@ class PrivateTransaction {
         name: "otWith",
         default: Buffer.from([0x00]),
       },
+      {
+        name: "privateArgs",
+        default: Buffer.from([0x00]),
+      },
+      {
+        name: "extV",
+        allowZero: true,
+        default: Buffer.from([0x1c]),
+      },
+      {
+        name: "extR",
+        length: 32,
+        allowZero: true,
+        allowLess: true,
+        default: Buffer.from([]),
+      },
+      {
+        name: "extS",
+        length: 32,
+        allowZero: true,
+        allowLess: true,
+        default: Buffer.from([]),
+      },
     ];
 
     /**
@@ -204,6 +228,53 @@ class PrivateTransaction {
     return this.to.toString("hex") === "";
   }
 
+
+
+  // Only work for OT arguments
+  extractPrivateArgs() {
+    const zeroString = '0000000000000000000000000000000000000000000000000000000000000000';
+    let items = this.raw;
+    let data = Buffer(items.slice()[5]).toString('hex');
+
+    const pos = data.lastIndexOf('0033') + 4;
+    let args = data.substring(pos);
+
+    let argArray = [];
+    let privateArgs = [];
+    let newDataStr = '';
+    let privateArgsStr = '';
+
+    let i = 0;
+    while(i < args.length){
+      argArray.push(args.substring(i, i + 64));
+      i += 64;
+    }
+
+    if(argArray[2] === argArray[4]){
+      privateArgs = argArray.slice(5, 5 + parseInt(argArray[2]));
+      console.log(privateArgs);
+      
+      for(i in range(0, 5)){
+        newDataStr += argArray[i];
+        privateArgsStr += argArray[i];
+      }
+
+      for(i in range(0, parseInt(argArray[2]))){
+        newDataStr += zeroString;
+      }
+
+      const blindedTransaction = data.substring(0, pos) + newDataStr;
+
+      this.raw[5] = Buffer.from(blindedTransaction, 'hex');
+
+      for(i in range(0, privateArgs.length)){
+        privateArgsStr += privateArgs[i];
+      }
+      this.raw[14] = Buffer.from(privateArgsStr, 'hex');
+    }
+
+  }
+
   /**
    * Computes a sha3-256 hash of the serialized tx
    * @param {Boolean} [includeSignature=true] whether or not to inculde the signature
@@ -245,9 +316,23 @@ class PrivateTransaction {
     } else {
       arr.splice(11, 1);
     }
-    console.log("[ITEMS]");
-    console.log(items);
+
+    // delete otWith and privateArgs from the hash
+    arr.splice(12, 2);
+
+    console.log(arr);
+
     // create hash
+    return ethUtil.rlphash(arr);
+  }
+
+  // Hash together the privateArgs and the signature
+  extHash() {
+    let arr = this.raw.slice(14, 15);
+    arr.splice(1, 0, this.v);
+    arr.splice(2, 0, this.r);
+    arr.splice(3, 0, this.s);
+    
     return ethUtil.rlphash(arr);
   }
 
@@ -313,11 +398,22 @@ class PrivateTransaction {
    */
   sign(privateKey) {
     const msgHash = this.hash(false);
+    console.log("HASH");
+    console.log(msgHash);
     const sig = ethUtil.ecsign(msgHash, privateKey);
     if (this._chainId > 0) {
       sig.v += this._chainId * 2 + 8;
     }
     Object.assign(this, sig);
+  }
+
+  // Sign the extHash
+  extSign(privateKey) {
+    const msgHash = this.extHash();
+    const sig = ethUtil.ecsign(msgHash, privateKey);
+    this.raw[15] = sig.r;
+    this.raw[16] = sig.s;
+    this.raw[17] = sig.v;
   }
 
   /**
