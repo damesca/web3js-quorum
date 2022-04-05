@@ -230,8 +230,8 @@ class PrivateTransaction {
 
 
 
-  // Only work for OT arguments
-  extractPrivateArgs() {
+  // Only works for OT arguments
+  extractOtPrivateArgs() {
     const zeroString = '0000000000000000000000000000000000000000000000000000000000000000';
     let items = this.raw;
     let data = Buffer(items.slice()[5]).toString('hex');
@@ -272,8 +272,109 @@ class PrivateTransaction {
       }
       this.raw[14] = Buffer.from(privateArgsStr, 'hex');
     }
+  }
+
+  // Only works for PSI arguments
+  extractPsiLoad() {
+    const zeroString = '0000000000000000000000000000000000000000000000000000000000000000';
+    let items = this.raw;
+    let data = Buffer(items.slice()[5]).toString('hex');
+
+    const pos = data.lastIndexOf('0033') + 4;
+    let args = data.substring(pos);
+
+    /*LOG*/console.log(" >>> ExtractPsiPrivateArgs");
+    /*LOG*/console.log(args);
+
+    let argArray = [];
+    let privateArgs = [];
+    let newDataStr = '';
+    let privateArgsStr = '';
+
+    let i = 0;
+    while(i < args.length){
+      argArray.push(args.substring(i, i + 64));
+      i += 64;
+    }
+
+    privateArgs = argArray.slice(5, 5 + parseInt(argArray[2]));
+    console.log(privateArgs);
+    
+    for(i in range(0, 5)){
+      newDataStr += argArray[i];
+      privateArgsStr += argArray[i];
+    }
+
+    for(i in range(0, parseInt(argArray[4]))){
+      newDataStr += zeroString;
+    }
+
+    const blindedTransaction = data.substring(0, pos) + newDataStr;
+
+    this.raw[5] = Buffer.from(blindedTransaction, 'hex');
+
+    for(i in range(0, privateArgs.length)){
+      privateArgsStr += privateArgs[i];
+    }
+    this.raw[14] = Buffer.from(privateArgsStr, 'hex');
+    
+  }
+
+  extractPsiConsume(){
+    const zeroString = '0000000000000000000000000000000000000000000000000000000000000000';
+    let items = this.raw;
+    let data = Buffer(items.slice()[5]).toString('hex');
+    let args = data.substring(8);
+    console.log(" EXTRACT CALL METHOD PRIVATE ARGS");
+    console.log(args);
+
+    let argArray = [];
+    let privateArgs = [];
+    let newDataStr = '';
+    let privateArgsStr = '';
+
+    let i = 0;
+    while(i < args.length){
+      argArray.push(args.substring(i, i + 64));
+      i += 64;
+    }
+
+    console.log(argArray);
+
+    privateArgs = argArray.slice(2, 2 + parseInt(argArray[1]));
+    console.log("PRIVATE ARGS");
+    console.log(privateArgs);
+    
+    for(i in range(0, 2)){
+      newDataStr += argArray[i];
+      privateArgsStr += argArray[i];
+    }
+
+    for(i in range(0, parseInt(argArray[1]))){
+      newDataStr += zeroString;
+    }
+
+    console.log("NEW DATA STR");
+    console.log(newDataStr);
+
+    const blindedTransaction = data.substring(0, 8) + newDataStr;
+
+    this.raw[5] = Buffer.from(blindedTransaction, 'hex');
+
+    for(i in range(0, privateArgs.length)){
+      privateArgsStr += privateArgs[i];
+    }
+
+    console.log("PRIVATE ARGS STR");
+    console.log(privateArgsStr);
+
+    this.raw[14] = Buffer.from(privateArgsStr, 'hex');
+
+    console.log("RAW");
+    console.log(this.raw);
 
   }
+
 
   /**
    * Computes a sha3-256 hash of the serialized tx
@@ -320,6 +421,7 @@ class PrivateTransaction {
     // delete otWith and privateArgs from the hash
     arr.splice(12, 2);
 
+    console.log(">>> TO-HASH");
     console.log(arr);
 
     // create hash

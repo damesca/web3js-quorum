@@ -357,11 +357,19 @@ function Priv(web3) {
     tx.restriction = options.restriction || "restricted";
     tx.otWith = options.otWith;
 
-    tx.extractPrivateArgs();
+    /*LOG*/console.log("TX-TO:");
+    /*LOG*/console.log(tx.to.length);
+    /*LOG*/console.log(tx.to.length == 20);
 
-    tx.sign(privateKeyBuffer);
-
-    tx.extSign(privateKeyBuffer);
+    if(tx.to.length == 0){
+      tx.extractPsiLoad();
+      tx.sign(privateKeyBuffer);
+      tx.extSign(privateKeyBuffer);
+    }else{
+      tx.extractPsiConsume();
+      tx.sign(privateKeyBuffer);
+      tx.extSign(privateKeyBuffer);
+    }
 
     const signedRlpEncoded = tx.serialize().toString("hex");
 
